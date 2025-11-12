@@ -78,7 +78,15 @@ npm run preview
 
 ## Example GTFS Feeds
 
-You can test the application with these public GTFS feeds:
+This repository includes two sample GTFS datasets in the `data/` directory:
+
+1. **CJ-2025-09-23-offre-2025-aout.zip** - Car Jaune (September 2025 offer)
+   - URL: `https://dsp2025.transdev.re/CJ-2025-09-23-offre-2025-aout.zip`
+
+2. **2025-11-04-car-jaune-1er-dec-pysae-08h51.zip** - Car Jaune (December 2025 update)
+   - URL: `https://dsp2025.transdev.re/2025-11-04-car-jaune-1er-dec-pysae-08h51.zip`
+
+You can also test with other public GTFS feeds:
 
 - [Sample GTFS Feed](https://gtfs.org/schedule/example/google_transit.zip)
 - Check [TransitFeeds](https://transitfeeds.com/) for more real-world GTFS datasets
