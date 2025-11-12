@@ -22,19 +22,34 @@ export default function ComparisonTable({ comparisons, name1, name2 }: Compariso
             </tr>
           </thead>
           <tbody>
-            {comparisons.map((comp, index) => (
-              <tr key={index}>
-                <td className="metric-name">{comp.metric}</td>
-                <td className="value">{comp.dataset1.toLocaleString()}</td>
-                <td className="value">{comp.dataset2.toLocaleString()}</td>
-                <td className={`value ${comp.absoluteDiff > 0 ? 'positive' : comp.absoluteDiff < 0 ? 'negative' : ''}`}>
-                  {comp.absoluteDiff > 0 ? '+' : ''}{comp.absoluteDiff.toLocaleString()}
-                </td>
-                <td className={`value ${comp.percentageDiff > 0 ? 'positive' : comp.percentageDiff < 0 ? 'negative' : ''}`}>
-                  {comp.percentageDiff > 0 ? '+' : ''}{comp.percentageDiff.toFixed(2)}%
-                </td>
-              </tr>
-            ))}
+            {comparisons.map((comp, index) => {
+              const absNum = typeof comp.absoluteDiff === 'number' ? comp.absoluteDiff : 0;
+              const pctNum = typeof comp.percentageDiff === 'number' ? comp.percentageDiff : 0;
+
+              return (
+                <tr key={index}>
+                  <td className="metric-name">{comp.metric}</td>
+                  <td className="value">
+                    {typeof comp.dataset1 === 'number' ? comp.dataset1.toLocaleString() : comp.dataset1}
+                  </td>
+                  <td className="value">
+                    {typeof comp.dataset2 === 'number' ? comp.dataset2.toLocaleString() : comp.dataset2}
+                  </td>
+                  <td className={`value ${absNum > 0 ? 'positive' : absNum < 0 ? 'negative' : ''}`}>
+                    {typeof comp.absoluteDiff === 'number'
+                      ? `${absNum > 0 ? '+' : ''}${comp.absoluteDiff.toLocaleString()}`
+                      : comp.absoluteDiff
+                    }
+                  </td>
+                  <td className={`value ${pctNum > 0 ? 'positive' : pctNum < 0 ? 'negative' : ''}`}>
+                    {typeof comp.percentageDiff === 'number'
+                      ? `${pctNum > 0 ? '+' : ''}${comp.percentageDiff.toFixed(2)}%`
+                      : comp.percentageDiff
+                    }
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

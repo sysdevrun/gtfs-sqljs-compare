@@ -421,6 +421,66 @@ body {
   text-decoration: underline;
 }
 
+.route-comparison-section {
+  margin-top: 2rem;
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+}
+
+.route-comparison-section h3 {
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+}
+
+.route-comparison-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.route-comparison-table th.sortable:hover {
+  background: var(--border-color);
+}
+
+.route-comparison-table .route-name {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.route-comparison-table .route-type {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.route-comparison-table .time-cell {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.route-comparison-table .time-comparison {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.route-comparison-table .headway-cell {
+  font-size: 0.9rem;
+}
+
+.route-comparison-table .total-row {
+  border-top: 2px solid var(--text-primary);
+  background: var(--bg-color);
+  font-weight: 600;
+}
+
+.route-comparison-table .total-row td {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
 .auto-loading-overlay {
   position: fixed;
   top: 0;
