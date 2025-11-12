@@ -2,18 +2,29 @@ import { useState, useEffect } from 'react';
 import GtfsLoader from './components/GtfsLoader';
 import StatisticsDisplay from './components/StatisticsDisplay';
 import ComparisonTable from './components/ComparisonTable';
-import { computeStatistics, compareStatistics } from './utils/gtfsStats';
-import type { GtfsData, GtfsComparison } from './types/gtfs';
+import RouteComparisonTable from './components/RouteComparisonTable';
+import { computeStatistics, compareStatistics, compareRouteStatistics } from './utils/gtfsStats';
+import type { GtfsData, GtfsComparison, RouteComparison } from './types/gtfs';
 import './App.css';
 
-// Default GTFS dataset URLs
-const DEFAULT_DATASET_1_URL = 'https://dsp2025.transdev.re/CJ-2025-09-23-offre-2025-aout.zip';
-const DEFAULT_DATASET_2_URL = 'https://dsp2025.transdev.re/2025-11-04-car-jaune-1er-dec-pysae-08h51.zip';
+// Default GTFS dataset URLs (using proxy for CORS)
+const DEFAULT_DATASET_1_URL = 'https://gtfs-proxy.sys-dev-run.re/proxy/dsp2025.transdev.re/CJ-2025-09-23-offre-2025-aout.zip';
+const DEFAULT_DATASET_2_URL = 'https://gtfs-proxy.sys-dev-run.re/proxy/dsp2025.transdev.re/2025-11-04-car-jaune-1er-dec-pysae-08h51.zip';
+
+// Comparison dates
+const DATASET_1_SINGLE_DAY = '20251112'; // 2025-11-12
+const DATASET_2_SINGLE_DAY = '20251201'; // 2025-12-01
+const DATASET_1_WEEK_START = '20251117'; // 2025-11-17
+const DATASET_1_WEEK_END = '20251123'; // 2025-11-23
+const DATASET_2_WEEK_START = '20251201'; // 2025-12-01
+const DATASET_2_WEEK_END = '20251207'; // 2025-12-07
 
 function App() {
   const [dataset1, setDataset1] = useState<GtfsData | null>(null);
   const [dataset2, setDataset2] = useState<GtfsData | null>(null);
   const [comparisons, setComparisons] = useState<GtfsComparison[] | null>(null);
+  const [singleDayRouteComparisons, setSingleDayRouteComparisons] = useState<RouteComparison[] | null>(null);
+  const [weekRouteComparisons, setWeekRouteComparisons] = useState<RouteComparison[] | null>(null);
   const [computing, setComputing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ dataset1: 0, dataset2: 0 });
@@ -22,7 +33,12 @@ function App() {
   const handleLoadDataset = async (instance: any, name: string, datasetNum: 1 | 2) => {
     setComputing(true);
     try {
-      const statistics = await computeStatistics(instance);
+      // Compute statistics with date parameters based on which dataset
+      const singleDay = datasetNum === 1 ? DATASET_1_SINGLE_DAY : DATASET_2_SINGLE_DAY;
+      const weekStart = datasetNum === 1 ? DATASET_1_WEEK_START : DATASET_2_WEEK_START;
+      const weekEnd = datasetNum === 1 ? DATASET_1_WEEK_END : DATASET_2_WEEK_END;
+
+      const statistics = await computeStatistics(instance, singleDay, weekStart, weekEnd);
       const data: GtfsData = { name, instance, statistics };
 
       if (datasetNum === 1) {
@@ -82,7 +98,12 @@ function App() {
       setLoadingStatus(prev => ({ ...prev, [statusKey]: `Computing statistics for ${name}...` }));
       setComputing(true);
 
-      const statistics = await computeStatistics(gtfs);
+      // Compute statistics with date parameters based on which dataset
+      const singleDay = datasetNum === 1 ? DATASET_1_SINGLE_DAY : DATASET_2_SINGLE_DAY;
+      const weekStart = datasetNum === 1 ? DATASET_1_WEEK_START : DATASET_2_WEEK_START;
+      const weekEnd = datasetNum === 1 ? DATASET_1_WEEK_END : DATASET_2_WEEK_END;
+
+      const statistics = await computeStatistics(gtfs, singleDay, weekStart, weekEnd);
       const data: GtfsData = { name, instance: gtfs, statistics };
 
       if (datasetNum === 1) {
@@ -123,6 +144,24 @@ function App() {
         if (data1?.statistics && data2?.statistics) {
           const comps = compareStatistics(data1.statistics, data2.statistics);
           setComparisons(comps);
+
+          // Compute route-level comparisons for single day
+          if (data1.statistics.singleDay && data2.statistics.singleDay) {
+            const singleDayComps = compareRouteStatistics(
+              data1.statistics.singleDay.routeStats,
+              data2.statistics.singleDay.routeStats
+            );
+            setSingleDayRouteComparisons(singleDayComps);
+          }
+
+          // Compute route-level comparisons for week
+          if (data1.statistics.weekRange && data2.statistics.weekRange) {
+            const weekComps = compareRouteStatistics(
+              data1.statistics.weekRange.routeStats,
+              data2.statistics.weekRange.routeStats
+            );
+            setWeekRouteComparisons(weekComps);
+          }
         }
       } catch (error) {
         console.error('Error loading default datasets:', error);
@@ -239,11 +278,35 @@ function App() {
         )}
 
         {comparisons && dataset1 && dataset2 && (
-          <ComparisonTable
-            comparisons={comparisons}
-            name1={dataset1.name}
-            name2={dataset2.name}
-          />
+          <>
+            <ComparisonTable
+              comparisons={comparisons}
+              name1={dataset1.name}
+              name2={dataset2.name}
+            />
+
+            {singleDayRouteComparisons && dataset1.statistics?.singleDay && dataset2.statistics?.singleDay && (
+              <RouteComparisonTable
+                comparisons={singleDayRouteComparisons}
+                name1={`${dataset1.name} (${dataset1.statistics.singleDay.date})`}
+                name2={`${dataset2.name} (${dataset2.statistics.singleDay.date})`}
+                title={`Single Day Comparison: ${dataset1.statistics.singleDay.date} vs ${dataset2.statistics.singleDay.date}`}
+                totalTrips1={dataset1.statistics.singleDay.totalTrips}
+                totalTrips2={dataset2.statistics.singleDay.totalTrips}
+              />
+            )}
+
+            {weekRouteComparisons && dataset1.statistics?.weekRange && dataset2.statistics?.weekRange && (
+              <RouteComparisonTable
+                comparisons={weekRouteComparisons}
+                name1={`${dataset1.name} (${dataset1.statistics.weekRange.startDate}-${dataset1.statistics.weekRange.endDate})`}
+                name2={`${dataset2.name} (${dataset2.statistics.weekRange.startDate}-${dataset2.statistics.weekRange.endDate})`}
+                title={`Week Comparison: ${dataset1.statistics.weekRange.startDate}-${dataset1.statistics.weekRange.endDate} vs ${dataset2.statistics.weekRange.startDate}-${dataset2.statistics.weekRange.endDate}`}
+                totalTrips1={dataset1.statistics.weekRange.totalTrips}
+                totalTrips2={dataset2.statistics.weekRange.totalTrips}
+              />
+            )}
+          </>
         )}
 
         {!dataset1 && !dataset2 && (
