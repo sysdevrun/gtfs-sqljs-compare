@@ -9,6 +9,10 @@ export default defineConfig({
     exclude: ['sql.js']
   },
   build: {
-    outDir: 'dist'
-  }
+    outDir: 'dist',
+    rollupOptions: {
+      external: ['sql.js']
+    }
+  },
+  assetsInclude: ['**/*.wasm']
 })
