@@ -25,8 +25,13 @@ export default function GtfsLoader({ onLoad, datasetNumber, disabled }: GtfsLoad
     try {
       // Dynamic import to avoid SSR issues
       const { GtfsSqlJs } = await import('gtfs-sqljs');
+      const { initializeSqlJs } = await import('../utils/sqlConfig');
+
+      // Initialize SQL.js with proper WASM path
+      const SQL = await initializeSqlJs();
 
       const gtfs = await GtfsSqlJs.fromZip(url, {
+        SQL,
         onProgress: (progressInfo: any) => {
           setProgress(progressInfo.percentComplete || 0);
         }
@@ -53,9 +58,14 @@ export default function GtfsLoader({ onLoad, datasetNumber, disabled }: GtfsLoad
 
     try {
       const { GtfsSqlJs } = await import('gtfs-sqljs');
+      const { initializeSqlJs } = await import('../utils/sqlConfig');
+
+      // Initialize SQL.js with proper WASM path
+      const SQL = await initializeSqlJs();
 
       const arrayBuffer = await file.arrayBuffer();
       const gtfs = await GtfsSqlJs.fromZip(new Uint8Array(arrayBuffer) as any, {
+        SQL,
         onProgress: (progressInfo: any) => {
           setProgress(progressInfo.percentComplete || 0);
         }

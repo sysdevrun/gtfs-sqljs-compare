@@ -64,8 +64,13 @@ function App() {
       setLoadingStatus(prev => ({ ...prev, [statusKey]: `Loading ${name}...` }));
 
       const { GtfsSqlJs } = await import('gtfs-sqljs');
+      const { initializeSqlJs } = await import('./utils/sqlConfig');
+
+      // Initialize SQL.js with proper WASM path
+      const SQL = await initializeSqlJs();
 
       const gtfs = await GtfsSqlJs.fromZip(url, {
+        SQL,
         onProgress: (progressInfo: any) => {
           setLoadingProgress(prev => ({
             ...prev,
