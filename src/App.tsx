@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GtfsLoader from './components/GtfsLoader';
 import StatisticsDisplay from './components/StatisticsDisplay';
 import ComparisonTable from './components/ComparisonTable';
@@ -6,11 +6,18 @@ import { computeStatistics, compareStatistics } from './utils/gtfsStats';
 import type { GtfsData, GtfsComparison } from './types/gtfs';
 import './App.css';
 
+// Default GTFS dataset URLs
+const DEFAULT_DATASET_1_URL = 'https://dsp2025.transdev.re/CJ-2025-09-23-offre-2025-aout.zip';
+const DEFAULT_DATASET_2_URL = 'https://dsp2025.transdev.re/2025-11-04-car-jaune-1er-dec-pysae-08h51.zip';
+
 function App() {
   const [dataset1, setDataset1] = useState<GtfsData | null>(null);
   const [dataset2, setDataset2] = useState<GtfsData | null>(null);
   const [comparisons, setComparisons] = useState<GtfsComparison[] | null>(null);
   const [computing, setComputing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState({ dataset1: 0, dataset2: 0 });
+  const [loadingStatus, setLoadingStatus] = useState({ dataset1: '', dataset2: '' });
 
   const handleLoadDataset = async (instance: any, name: string, datasetNum: 1 | 2) => {
     setComputing(true);
@@ -50,6 +57,78 @@ function App() {
     setComparisons(null);
   };
 
+  // Function to load GTFS from URL
+  const loadGtfsFromUrl = async (url: string, name: string, datasetNum: 1 | 2) => {
+    try {
+      const statusKey = datasetNum === 1 ? 'dataset1' : 'dataset2';
+      setLoadingStatus(prev => ({ ...prev, [statusKey]: `Loading ${name}...` }));
+
+      const { GtfsSqlJs } = await import('gtfs-sqljs');
+
+      const gtfs = await GtfsSqlJs.fromZip(url, {
+        onProgress: (progressInfo: any) => {
+          setLoadingProgress(prev => ({
+            ...prev,
+            [statusKey]: progressInfo.percentComplete || 0
+          }));
+        }
+      });
+
+      setLoadingStatus(prev => ({ ...prev, [statusKey]: `Computing statistics for ${name}...` }));
+      setComputing(true);
+
+      const statistics = await computeStatistics(gtfs);
+      const data: GtfsData = { name, instance: gtfs, statistics };
+
+      if (datasetNum === 1) {
+        setDataset1(data);
+      } else {
+        setDataset2(data);
+      }
+
+      setLoadingStatus(prev => ({ ...prev, [statusKey]: `${name} loaded successfully` }));
+      setComputing(false);
+
+      return data;
+    } catch (error) {
+      const statusKey = datasetNum === 1 ? 'dataset1' : 'dataset2';
+      setLoadingStatus(prev => ({
+        ...prev,
+        [statusKey]: `Error loading ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }));
+      console.error(`Error loading dataset ${datasetNum}:`, error);
+      setComputing(false);
+      throw error;
+    }
+  };
+
+  // Auto-load datasets on mount
+  useEffect(() => {
+    const loadDefaultDatasets = async () => {
+      setLoading(true);
+
+      try {
+        // Load both datasets in parallel
+        const [data1, data2] = await Promise.all([
+          loadGtfsFromUrl(DEFAULT_DATASET_1_URL, 'Car Jaune - September 2025', 1),
+          loadGtfsFromUrl(DEFAULT_DATASET_2_URL, 'Car Jaune - December 2025', 2)
+        ]);
+
+        // Compute comparison
+        if (data1?.statistics && data2?.statistics) {
+          const comps = compareStatistics(data1.statistics, data2.statistics);
+          setComparisons(comps);
+        }
+      } catch (error) {
+        console.error('Error loading default datasets:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDefaultDatasets();
+  }, []);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -58,13 +137,43 @@ function App() {
       </header>
 
       <main className="app-main">
+        {loading && (
+          <div className="auto-loading-overlay">
+            <div className="auto-loading-container">
+              <h2>Loading GTFS Datasets...</h2>
+              <div className="loading-dataset">
+                <p>{loadingStatus.dataset1}</p>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${loadingProgress.dataset1}%` }}
+                  >
+                    {loadingProgress.dataset1.toFixed(0)}%
+                  </div>
+                </div>
+              </div>
+              <div className="loading-dataset">
+                <p>{loadingStatus.dataset2}</p>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${loadingProgress.dataset2}%` }}
+                  >
+                    {loadingProgress.dataset2.toFixed(0)}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="loaders-container">
           <div className="loader-wrapper">
             {!dataset1 ? (
               <GtfsLoader
                 onLoad={(instance, name) => handleLoadDataset(instance, name, 1)}
                 datasetNumber={1}
-                disabled={computing}
+                disabled={computing || loading}
               />
             ) : (
               <div className="loaded-dataset">
@@ -73,7 +182,7 @@ function App() {
                   <button
                     className="clear-button"
                     onClick={() => handleClearDataset(1)}
-                    disabled={computing}
+                    disabled={computing || loading}
                   >
                     Clear
                   </button>
@@ -93,7 +202,7 @@ function App() {
               <GtfsLoader
                 onLoad={(instance, name) => handleLoadDataset(instance, name, 2)}
                 datasetNumber={2}
-                disabled={computing}
+                disabled={computing || loading}
               />
             ) : (
               <div className="loaded-dataset">
@@ -102,7 +211,7 @@ function App() {
                   <button
                     className="clear-button"
                     onClick={() => handleClearDataset(2)}
-                    disabled={computing}
+                    disabled={computing || loading}
                   >
                     Clear
                   </button>
